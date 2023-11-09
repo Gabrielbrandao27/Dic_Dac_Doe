@@ -1,21 +1,26 @@
-# Running in host-mode:
-#
-# In one terminal for docker machine: 
-#   docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml -f ../docker-compose-host.yml up
-#
-# another terminal for back-end:
-#   python3 -m venv .venv
-#   . .venv/bin/activate
-#   pip install -r requirements.txt
-#   ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004" python3 tic-tac-toe.py
-#
-# Another terminal for front-end:
-#   sudo yarn
-#   sudo yarn build
-#   yarn start input send --payload '0x2329840, 0, 0'
-#
-# To stop the Application:
-#   docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml down -v
+'''
+Running in host-mode:
+
+-> In one terminal for docker machine: 
+docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml -f ../docker-compose-host.yml up
+
+-> Another terminal for back-end:
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004" python3 tic-tac-toe.py
+
+-> Another terminal for front-end:
+sudo yarn
+sudo yarn build
+yarn start input send --payload '0x70 997970C51812dc3A010C7d01b50e0d17dc79C8,0,0'
+yarn start input send --payload '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0,1' --accountIndex '1'
+yarn start inspect --payload '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+  
+
+-> To stop the Application:
+docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml down -v
+'''
 
 from os import environ
 import logging
@@ -57,24 +62,19 @@ def handle_advance(data):
     address_current = data["metadata"]["msg_sender"]
         
     address_opponent, row, col = hex2str(data['payload']).split(',')
-
-    logger.info(f'address_opponent: {address_opponent}, address_current: {address_current}, row: {row} and col: {col}')
     
     game_key = get_game_key(address_current, address_opponent)
 
     if game_key not in games:
         games[game_key] = {'board': initial_board, 'turn': 0, 'games_count': 1, 'player_turn': address_current, address_current: 0, address_opponent: 0}
 
-    logger.info(f'\nGames before play: {games}')
 
     # if games[game_key]['player_turn'] != None and games[game_key]['player_turn'] != address_current:
     #     return "reject"
     
-    # logger.info(f'\nGames after turn check: {games}')
 
     make_play(game_key, int(row), int(col))
 
-    logger.info(f'\nGames after make play: {games}')
 
     if check_winner(games[game_key]['board']):
         games[game_key]['games_count'] += 1
@@ -86,18 +86,16 @@ def handle_advance(data):
         logger.info(f'Games after win: {games}')
         return "accept"
     
-    elif check_winner(games[game_key]['board']) == 'Tie':
+    if check_winner(games[game_key]['board']) == 'Tie':
         games[game_key]['games_count'] += 1
         games[game_key]['board'] = [['', '', ''],['', '', ''],['', '', '']]
         games[game_key]['turn'] = 0
         games[game_key]['player_turn'] = None
         logger.info(f"It's a Tie!! Both players keep their scores.")
-        logger.info(f'Games after win: {games}')
+        logger.info(f'Games after draw: {games}')
         return "accept"
         
     games[game_key]['player_turn'] = address_opponent
-
-    logger.info(f'\nGames after check winner: {games}')
 
     return "accept"
 
@@ -159,9 +157,6 @@ def check_winner(board):
                 return False  # If any cell is empty, the game is not a tie
     return 'Tie'  # All cells are filled, and no player has won, indicating a tie
 
-# 1 payload: 0x2329840, 0, 0
-# 2 payload: 0x1111111, 0, 1
-
 
 def handle_inspect(data):
     logger.info(f"Received inspect request data {data}")
@@ -169,14 +164,17 @@ def handle_inspect(data):
     logger.info(f'data payload: {hex2str(data["payload"])}')
     address_current, address_opponent = hex2str(data['payload']).split(',')
     game_key = get_game_key(address_current, address_opponent)
+    board = '\n'.join([' | '.join([' ' if cell == '' else cell for cell in row]) for row in games[game_key]['board']])
+
+    if games[game_key]['turn'] == 1:
+        report = {"payload": str2hex(f'\n\nWelcome to Tic Tac Toe!\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
+
+    elif games[game_key]['player_turn'] == None:
+            report = {"payload": str2hex(f"\n\nThe match has ended. Start a new one. \n\nScores: {address_current} {games[game_key]['0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266']} x {games[game_key][address_opponent]} {address_opponent}\n")}
+        
+    else:
+        report = {"payload": str2hex(f'\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
     
-    if games[game_key]['player_turn'] == None:
-        if games[game_key][address_current] > games[game_key][address_opponent]:
-            report = {"payload": str2hex(f'Victory! Player {address_current} has won!! Its now {games[game_key][address_current]} x {games[game_key][address_opponent]}')}
-        else:
-            report = {"payload": str2hex(f'Victory! Player {address_opponent} has won!! Its now {games[game_key][address_current]} x {games[game_key][address_opponent]}')}
-    
-    report = {"payload": str2hex(f'Welcome to Tic Tac Toe!\nGame Key: {games[game_key]}\n\nBoard: {games[game_key]["board"]}\n\nPlayer Turn: {games[game_key]["player_turn"]}')}
     response = requests.post(rollup_server + "/report", json=report)
     logger.info(f"Received report status {response.status_code}")
 
