@@ -75,8 +75,9 @@ def handle_advance(data):
 
     make_play(game_key, int(row), int(col))
 
-
-    if check_winner(games[game_key]['board']):
+    logger.info(f'Games after play: {games[game_key]}')
+    
+    if check_winner(games[game_key]['board']) == 'winner':
         games[game_key]['games_count'] += 1
         games[game_key]['board'] = [['', '', ''],['', '', ''],['', '', '']]
         games[game_key]['turn'] = 0
@@ -86,7 +87,7 @@ def handle_advance(data):
         logger.info(f'Games after win: {games}')
         return "accept"
     
-    if check_winner(games[game_key]['board']) == 'Tie':
+    elif check_winner(games[game_key]['board']) == 'tie':
         games[game_key]['games_count'] += 1
         games[game_key]['board'] = [['', '', ''],['', '', ''],['', '', '']]
         games[game_key]['turn'] = 0
@@ -149,13 +150,13 @@ def check_winner(board):
         board[0][2] == board[1][1] == board[2][0] == 'O' or
         board[0][2] == board[1][1] == board[2][0] == 'X'
     ):
-        return True
+        return 'winner'
     # Check for a tie
     for row in board:
         for cell in row:
             if cell != 'O' and cell != 'X':
                 return False  # If any cell is empty, the game is not a tie
-    return 'Tie'  # All cells are filled, and no player has won, indicating a tie
+    return 'tie'  # All cells are filled, and no player has won, indicating a tie
 
 
 def handle_inspect(data):
