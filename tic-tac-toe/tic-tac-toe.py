@@ -13,7 +13,7 @@ ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004" python3 tic-tac-toe.py
 -> Another terminal for front-end:
 sudo yarn
 sudo yarn build
-yarn start input send --payload '0x70 997970C51812dc3A010C7d01b50e0d17dc79C8,0,0'
+yarn start input send --payload '0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0,0'
 yarn start input send --payload '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0,1' --accountIndex '1'
 yarn start inspect --payload '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
   
@@ -25,7 +25,6 @@ docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml down -v
 from os import environ
 import logging
 import requests
-import json
 
 logging.basicConfig(level="INFO")
 logger = logging.getLogger(__name__)
@@ -67,10 +66,6 @@ def handle_advance(data):
 
     if game_key not in games:
         games[game_key] = {'board': initial_board, 'turn': 0, 'games_count': 1, 'player_turn': address_current, address_current: 0, address_opponent: 0}
-
-
-    # if games[game_key]['player_turn'] != None and games[game_key]['player_turn'] != address_current:
-    #     return "reject"
     
 
     make_play(game_key, int(row), int(col))
@@ -162,19 +157,25 @@ def check_winner(board):
 def handle_inspect(data):
     logger.info(f"Received inspect request data {data}")
     logger.info("Adding report")
-    logger.info(f'data payload: {hex2str(data["payload"])}')
-    address_current, address_opponent = hex2str(data['payload']).split(',')
+    payload = hex2str(data["payload"])
+    logger.info(f'data payload: {payload}')
+    address_current, address_opponent = payload.split(',')
     game_key = get_game_key(address_current, address_opponent)
-    board = '\n'.join([' | '.join([' ' if cell == '' else cell for cell in row]) for row in games[game_key]['board']])
 
-    if games[game_key]['turn'] == 1:
-        report = {"payload": str2hex(f'\n\nWelcome to Tic Tac Toe!\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
+    if game_key in games:
+        board = '\n'.join([' | '.join([' ' if cell == '' else cell for cell in row]) for row in games[game_key]['board']])
 
-    elif games[game_key]['player_turn'] == None:
-            report = {"payload": str2hex(f"\n\nThe match has ended. Start a new one. \n\nScores: {address_current} {games[game_key]['0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266']} x {games[game_key][address_opponent]} {address_opponent}\n")}
-        
+        if games[game_key]['turn'] == 1:
+            report = {"payload": str2hex(f'\n\nWelcome to Tic Tac Toe!\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
+
+        elif games[game_key]['player_turn'] == None:
+                report = {"payload": str2hex(f"\n\nThe match has ended. Start a new one.\n\n{board}\n\nScores: {address_current} {games[game_key][address_current]} x {games[game_key][address_opponent]} {address_opponent}\n")}
+            
+        else:
+            report = {"payload": str2hex(f'\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
     else:
-        report = {"payload": str2hex(f'\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
+        report = {"payload": str2hex(f'\n\nGame does not exist!! Make a move with "yarn start input send --payload "<oponent_address>,<row>,<col>""\nTo start playing.\n')}
+
     
     response = requests.post(rollup_server + "/report", json=report)
     logger.info(f"Received report status {response.status_code}")

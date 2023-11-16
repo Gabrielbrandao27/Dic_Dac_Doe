@@ -1,6 +1,6 @@
 # tic-tac-toe DApp
 
-tic-tac-toe is a DApp written in Python that simulates a tic-tac-toe match with the help of the [Python Mathematical Expression Evaluator (`py-expression-eval`)](https://pypi.org/project/py-expression-eval/).
+tic-tac-toe is a DApp written in Python that simulates a tic-tac-toe match
 
 The DApp receives custom instructions to the begin match and place marker on the table as inputs and generates notices with the current table.
 For example, the following expression is a valid input as the first place beign the oponent's address, the second beign the X placement and the third beign the Y placement:
