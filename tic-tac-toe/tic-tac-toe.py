@@ -62,6 +62,9 @@ def handle_advance(data):
         
     address_opponent, row, col = hex2str(data['payload']).split(',')
     
+    address_current = address_current.lower()
+    address_opponent = address_opponent.lower()
+    
     game_key = get_game_key(address_current, address_opponent)
 
     if game_key not in games:
@@ -97,8 +100,6 @@ def handle_advance(data):
 
 
 def get_game_key(address_current, address_opponent):
-    address_current = address_current.lower()
-    address_opponent = address_opponent.lower()
 
     if address_current < address_opponent:
         player1 = address_current
@@ -160,19 +161,23 @@ def handle_inspect(data):
     payload = hex2str(data["payload"])
     logger.info(f'data payload: {payload}')
     address_current, address_opponent = payload.split(',')
+
+    address_current = address_current.lower()
+    address_opponent = address_opponent.lower()
+
     game_key = get_game_key(address_current, address_opponent)
 
     if game_key in games:
         board = '\n'.join([' | '.join([' ' if cell == '' else cell for cell in row]) for row in games[game_key]['board']])
 
         if games[game_key]['turn'] == 1:
-            report = {"payload": str2hex(f'\n\nWelcome to Tic Tac Toe!\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
+            report = {"payload": str2hex(f'\n\nWelcome to Dic Dac Doe!\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
 
         elif games[game_key]['player_turn'] == None:
                 report = {"payload": str2hex(f"\n\nThe match has ended. Start a new one.\n\n{board}\n\nScores: {address_current} {games[game_key][address_current]} x {games[game_key][address_opponent]} {address_opponent}\n")}
             
         else:
-            report = {"payload": str2hex(f'\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
+            report = {"payload": str2hex(f'\n\nMatch underway!\n\nGame Key: {games[game_key]}\n\nBoard:\n{board}\n\nPlayer Turn: {games[game_key]["player_turn"]}\n')}
     else:
         report = {"payload": str2hex(f'\n\nGame does not exist!! Make a move with "yarn start input send --payload "<oponent_address>,<row>,<col>""\nTo start playing.\n')}
 
