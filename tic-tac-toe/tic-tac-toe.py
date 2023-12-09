@@ -23,8 +23,10 @@ docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml down -v
 '''
 
 from os import environ
+import json
 import logging
 import requests
+from eth_abi_ext import decode_packed
 
 logging.basicConfig(level="INFO")
 logger = logging.getLogger(__name__)
@@ -32,17 +34,56 @@ logger = logging.getLogger(__name__)
 rollup_server = environ["ROLLUP_HTTP_SERVER_URL"]
 logger.info(f"HTTP rollup_server url is {rollup_server}")
 
+
 def hex2str(hex):
     """
     Decodes a hex string into a regular string
     """
     return bytes.fromhex(hex[2:]).decode("utf-8")
 
+
 def str2hex(str):
     """
     Encodes a string as a hex string
     """
     return "0x" + str.encode("utf-8").hex()
+
+
+TRANSFER_FUNCTION_SELECTOR = b'\xa9\x05\x9c\xbb'     #'address','uint256'
+ERC_20_ADDRESS = '0x9C21AEb2093C32DDbC53eEF24B873BDCd1aDa1DB'.lower()
+
+balance = {}
+
+
+def handle_erc20_deposit(data):
+    binary = bytes.fromhex(data["payload"][2:])
+    try:
+        decoded = decode_packed(['bool','address','address','uint256'], binary)
+    except Exception as e:
+        # payload does not conform to ERC20 deposit ABI
+        return "reject"
+
+    success = decoded[0]
+    erc20 = decoded[1]
+    depositor = decoded[2]
+    amount = decoded[3]
+
+    if not depositor in balance:
+        balance[depositor] = {}
+    if not erc20 in balance[depositor]:
+        balance[depositor][erc20] = 0
+    
+    balance[depositor][erc20] += amount
+
+
+def handle_withdraw(sender, dict):
+    erc20 = dict['erc20'].lower()
+    amount = dict['amount']
+
+    if balance[sender][erc20] < 0:
+        raise Exception(f"user {sender} does not have enough: {erc20} tokens.")
+
+
 
 games = {} # {game_key: {board: [], turn: 0, games_count: 1, player_turn: address_current, address_current: 0, address_opponent: 0}
 
@@ -52,8 +93,17 @@ initial_board = [
         ['', '', '']
     ]
 
+
 def handle_advance(data):
     logger.info(f"Handling advance request data {data}")
+    
+    if data['metadata']['msg_sender'].lower() == ERC_20_ADDRESS:
+        return handle_erc20_deposit(data)
+    
+    payload_dict = json.loads(hex2str(data['payload']))
+    sender = data['metadata']['msg_sender'].lower()
+    if payload_dict['action'] == 'withdraw':
+        handle_withdraw(sender, payload_dict)
 
     notice = {"payload": data["payload"]}
     response = requests.post(rollup_server + "/notice", json=notice)
@@ -71,7 +121,7 @@ def handle_advance(data):
         games[game_key] = {'board': initial_board, 'turn': 0, 'games_count': 1, 'player_turn': address_current, address_current: 0, address_opponent: 0}
     
 
-    make_play(game_key, int(row), int(col))
+    make_play(game_key, address_current, int(row), int(col))
 
     logger.info(f'Games after play: {games[game_key]}')
     
@@ -112,18 +162,24 @@ def get_game_key(address_current, address_opponent):
 
     return game_key
 
-def make_play(game_key, row, col):
+
+def make_play(game_key, address_current, row, col):
     
-    if games[game_key]['turn'] % 2 != 0:
-        play = 'O'
+    if games[game_key]['player_turn'] != address_current:
+        logger.info(f"Not this player's turn!!")
+        return "accept"
+    
     else:
-        play = 'X'
+        if games[game_key]['turn'] % 2 != 0:
+            play = 'O'
+        else:
+            play = 'X'
 
-    board = games[game_key]['board']
-    board[row][col] = play
+        board = games[game_key]['board']
+        board[row][col] = play
 
-    games[game_key]['board'] = board
-    games[game_key]['turn'] += 1
+        games[game_key]['board'] = board
+        games[game_key]['turn'] += 1
 
 
 def check_winner(board):
