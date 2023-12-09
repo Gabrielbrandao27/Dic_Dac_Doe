@@ -15,7 +15,10 @@ sudo yarn
 sudo yarn build
 yarn start input send --payload '0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0,0'
 yarn start input send --payload '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0,1' --accountIndex '1'
-yarn start inspect --payload '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+yarn start inspect --payload 'status,0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0x70997970C51812dc3A010C7d01b50e0d17dc79C8' for game status
+yarn start inspect --payload 'game-key,0x70997970C51812dc3A010C7d01b50e0d17dc79C8' for your game-keys
+yarn start inspect --payload 'balance,0x70997970C51812dc3A010C7d01b50e0d17dc79C8' for your balance
+
   
 
 -> To stop the Application:
@@ -168,11 +171,11 @@ def handle_advance(data):
             return "accept"
 
         games[game_key]["player_turn"] = address_opponent
-    
+
     except Exception as e:
         post("report", {"payload": str2hex(str(e))})
         return "reject"
-    
+
     return "accept"
 
 
@@ -242,11 +245,14 @@ def handle_inspect(data):
     payload = hex2str(data["payload"])
     logger.info(f"data payload: {payload}")
 
-    if 'balance' in payload and balance['depositor'] == data["metadata"]["msg_sender"].lower():
+    if (
+        "balance" in payload
+        and balance["depositor"] == data["metadata"]["msg_sender"].lower()
+    ):
         balance_report = json.dumps(balance)
         report = {f"Current Balance: ", balance_report}
-    
-    elif 'status' in payload:
+
+    elif "status" in payload:
         identifier, address_current, address_opponent = payload.split(",")
 
         address_current = address_current.lower()
@@ -288,25 +294,19 @@ def handle_inspect(data):
                     f'\n\nGame does not exist!! Make a move with "yarn start input send --payload "<oponent_address>,<row>,<col>""\nTo start playing.\n'
                 )
             }
-    
-    elif 'game-key' in payload:
+
+    elif "game-key" in payload:
         games_list = []
         for game in games:
             if data["metadata"]["msg_sender"].lower() in game[game_key]:
                 games_list.append(game[game_key])
 
-        report = {
-            "payload": str2hex(
-                f'\n\nYour Game-Keys: {games_list}'
-            )
-        }
+        report = {"payload": str2hex(f"\n\nYour Game-Keys: {games_list}")}
 
-    
     else:
         report = {
             "payload": str2hex(
-                f'\n\nInput does not match any case. Try "status,<game-key>" for game status\nTry "game-key,<your-address>" for your game-keys
-                \nOr "balance,<your-address>" for balance report.\n'
+                f'\n\nInput does not match any case. Try "status,<game-key>" for game status\nTry "game-key,<your-address>" for your game-keys\nOr "balance,<your-address>" for balance report.\n'
             )
         }
 
