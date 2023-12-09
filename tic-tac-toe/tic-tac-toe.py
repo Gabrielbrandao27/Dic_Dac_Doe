@@ -86,6 +86,8 @@ def handle_erc20_deposit(data):
 
     balance[depositor][erc20] += amount
 
+    return "accept"
+
 
 def handle_withdraw(sender, dict):
     erc20 = dict["erc20"].lower()
