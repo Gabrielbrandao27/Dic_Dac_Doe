@@ -1,6 +1,6 @@
 """
 Running in host-mode:
-
+0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 -> In one terminal for docker machine: 
 docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml -f ../docker-compose-host.yml up
 
@@ -143,21 +143,24 @@ def handle_advance(data):
 
     address_opponent = address_opponent.lower()
 
+    if address_current == address_opponent:
+        logger.info(f"Can't start a game with yourself!")
+        return "reject"
     game_key = get_game_key(address_current, address_opponent)
 
     if game_key not in games:
         games[game_key] = {
-            "board": initial_board,
+            "board": [["", "", ""], ["", "", ""], ["", "", ""]],
             "turn": 0,
             "games_count": 1,
             "player_turn": address_current,
             address_current: 0,
             address_opponent: 0,
         }
-    logger.info(f"Games: {games}")
+    logger.info(f"\n\nGames: {games}\n\n")
     make_play(game_key, address_current, int(row), int(col))
+    logger.info(f"\n\nGames after play: {games}\n\n")
 
-    logger.info(f"Games after play: {games[game_key]}")
 
     if check_winner(games[game_key]["board"]) == "winner":
         games[game_key]["games_count"] += 1
@@ -269,9 +272,8 @@ def handle_inspect(data):
         address_opponent = inputs[2].lower()
 
         game_key = get_game_key(address_current, address_opponent)
-        logger.info(f"Games before game-key: {games}")
+
         if game_key in games:
-            logger.info(f"Games after game-key: {games}")
 
             board = "\n".join(
                 [
