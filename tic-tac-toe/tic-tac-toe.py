@@ -35,11 +35,8 @@ docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml down -v
 """
 
 from os import environ
-import json
 import logging
 import requests
-from eth_abi_ext import decode_packed
-from eth_abi.abi import encode
 
 logging.basicConfig(level="INFO")
 logger = logging.getLogger(__name__)
@@ -62,60 +59,7 @@ def str2hex(str):
     return "0x" + str.encode("utf-8").hex()
 
 
-TRANSFER_FUNCTION_SELECTOR = b"\xa9\x05\x9c\xbb"  # transfer('address','uint256')
-ERC_20_ADDRESS = "0x9C21AEb2093C32DDbC53eEF24B873BDCd1aDa1DB".lower()
-
-balance = {}
-
-
-def post(endpoint, json):
-    response = requests.post(f"{rollup_server}/{endpoint}", json=json)
-    logger.info(
-        f"Received {endpoint} with status {response.status_code} body {response.content}"
-    )
-
-
-def handle_erc20_deposit(data):
-    binary = bytes.fromhex(data["payload"][2:])
-    try:
-        decoded = decode_packed(["bool", "address", "address", "uint256"], binary)
-    except Exception as e:
-        # payload does not conform to ERC20 deposit ABI
-        return "reject"
-
-    success = decoded[0]
-    erc20 = decoded[1]
-    depositor = decoded[2].lower()
-    amount = decoded[3]
-
-    if not depositor in balance:
-        balance[depositor] = {}
-    if not erc20 in balance[depositor]:
-        balance[depositor][erc20] = 0
-
-    balance[depositor][erc20] += amount
-
-    return "accept"
-
-
-def handle_withdraw(sender, dict):
-    erc20 = dict["erc20"].lower()
-    amount = dict["amount"]
-
-    if balance[sender][erc20] < 0:
-        raise Exception(f"user {sender} does not have enough: {erc20} tokens.")
-
-    transfer_payload = TRANSFER_FUNCTION_SELECTOR + encode(
-        ["address", "uint256"], [sender, amount]
-    )
-    voucher = {"destination": erc20, "payload": "0x" + transfer_payload.hex()}
-
-    post("voucher", voucher)
-
-
 games = {}  # {game_key: {board: [], turn: 0, games_count: 1, player_turn: address_current, address_current: 0, address_opponent: 0}
-
-initial_board = [["", "", ""], ["", "", ""], ["", "", ""]]
 
 
 def handle_advance(data):
@@ -126,18 +70,6 @@ def handle_advance(data):
         f"Received notice status {response.status_code} body {response.content}"
     )
     address_current = data["metadata"]["msg_sender"].lower()
-
-
-    if data["metadata"]["msg_sender"].lower() == ERC_20_ADDRESS:
-        return handle_erc20_deposit(data)
-
-    # payload_dict = hex2str(data["payload"])
-
-
-    # if payload_dict["action"] == "withdraw":
-    #     handle_withdraw(address_current, payload_dict)
-
-
 
     address_opponent, row, col = hex2str(data["payload"]).split(",")
 
@@ -160,7 +92,6 @@ def handle_advance(data):
     logger.info(f"\n\nGames: {games}\n\n")
     make_play(game_key, address_current, int(row), int(col))
     logger.info(f"\n\nGames after play: {games}\n\n")
-
 
     if check_winner(games[game_key]["board"]) == "winner":
         games[game_key]["games_count"] += 1
@@ -257,24 +188,13 @@ def handle_inspect(data):
     inputs = []
     inputs = payload.split(",")
 
-    if inputs[0] == "balance":
-        if (
-            balance != {}
-            and balance["depositor"] == inputs[1].lower()
-        ):
-            balance_report = json.dumps(balance)
-            report = {"payload": str2hex(f"\n\nCurrent Balance: {balance_report}")}
-        else:
-            report = {"payload": str2hex(f"\n\nNo transfers found from this address.")}
-
-    elif inputs[0] == "status":
+    if inputs[0] == "status":
         address_current = inputs[1].lower()
         address_opponent = inputs[2].lower()
 
         game_key = get_game_key(address_current, address_opponent)
 
         if game_key in games:
-
             board = "\n".join(
                 [
                     " | ".join([" " if cell == "" else cell for cell in row])
