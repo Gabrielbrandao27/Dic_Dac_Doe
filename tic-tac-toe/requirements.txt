@@ -1,2 +1,2 @@
 requests == 2.23.0
-py_expression_eval == 0.3.14
+eth_abi == 4.0.0
