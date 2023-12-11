@@ -89,34 +89,35 @@ def handle_advance(data):
             address_current: 0,
             address_opponent: 0,
         }
-    logger.info(f"\n\nGames: {games}\n\n")
-    make_play(game_key, address_current, int(row), int(col))
-    logger.info(f"\n\nGames after play: {games}\n\n")
 
-    if check_winner(games[game_key]["board"]) == "winner":
-        games[game_key]["games_count"] += 1
-        games[game_key]["board"] = [["", "", ""], ["", "", ""], ["", "", ""]]
-        games[game_key]["turn"] = 0
-        games[game_key]["player_turn"] = None
-        games[game_key][address_current] += 1
-        logger.info(
-            f"Victory!! Player {address_current} Wins!! That makes it {games[game_key][address_current]} x {games[game_key][address_opponent]}"
-        )
-        logger.info(f"Games after win: {games}")
+    if make_play(game_key, address_current, int(row), int(col)) != "reject":
+
+        if check_winner(games[game_key]["board"]) == "winner":
+            games[game_key]["games_count"] += 1
+            games[game_key]["board"] = [["", "", ""], ["", "", ""], ["", "", ""]]
+            games[game_key]["turn"] = 0
+            games[game_key]["player_turn"] = None
+            games[game_key][address_current] += 1
+            logger.info(
+                f"Victory!! Player {address_current} Wins!! That makes it {games[game_key][address_current]} x {games[game_key][address_opponent]}"
+            )
+            logger.info(f"Games after win: {games}")
+            return "accept"
+
+        elif check_winner(games[game_key]["board"]) == "tie":
+            games[game_key]["games_count"] += 1
+            games[game_key]["board"] = [["", "", ""], ["", "", ""], ["", "", ""]]
+            games[game_key]["turn"] = 0
+            games[game_key]["player_turn"] = None
+            logger.info(f"It's a Tie!! Both players keep their scores.")
+            logger.info(f"Games after draw: {games}")
+            return "accept"
+
+        games[game_key]["player_turn"] = address_opponent
+
         return "accept"
-
-    elif check_winner(games[game_key]["board"]) == "tie":
-        games[game_key]["games_count"] += 1
-        games[game_key]["board"] = [["", "", ""], ["", "", ""], ["", "", ""]]
-        games[game_key]["turn"] = 0
-        games[game_key]["player_turn"] = None
-        logger.info(f"It's a Tie!! Both players keep their scores.")
-        logger.info(f"Games after draw: {games}")
-        return "accept"
-
-    games[game_key]["player_turn"] = address_opponent
-
-    return "accept"
+    else:
+        return "reject"
 
 
 def get_game_key(address_current, address_opponent):
@@ -133,21 +134,26 @@ def get_game_key(address_current, address_opponent):
 
 
 def make_play(game_key, address_current, row, col):
+    board = games[game_key]["board"]
+
     if games[game_key]["player_turn"] != address_current:
         logger.info(f"Not this player's turn!!")
-        return "accept"
+        return "reject"
 
     else:
-        if games[game_key]["turn"] % 2 != 0:
-            play = "O"
+        if board[row][col] == "":
+            if games[game_key]["turn"] % 2 != 0:
+                play = "O"
+            else:
+                play = "X"
+
+            board[row][col] = play
+
+            games[game_key]["board"] = board
+            games[game_key]["turn"] += 1
         else:
-            play = "X"
-
-        board = games[game_key]["board"]
-        board[row][col] = play
-
-        games[game_key]["board"] = board
-        games[game_key]["turn"] += 1
+            logger.info(f"Slot already taken! Choose a new one!")
+            return "reject"
 
 
 def check_winner(board):
