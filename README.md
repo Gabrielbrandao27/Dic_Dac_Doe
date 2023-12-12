@@ -2,20 +2,20 @@
 
 How to run in Host-mode:
 
--> In one terminal for docker machine:
-    - cd Dic_Dac_Doe/tic-tac-toe
-    docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml -f ../docker-compose-host.yml up
+-> In one terminal for docker machine:<br>
+    cd Dic_Dac_Doe/tic-tac-toe<br>
+    docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml -f ../docker-compose-host.yml up<br>
 
--> Another terminal for back-end:
-    - cd Dic_Dac_Doe/tic-tac-toe
-    python3 -m venv .venv
-    . .venv/bin/activate
-    pip install -r requirements.txt
-    ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004" python3 tic-tac-toe.py
+-> Another terminal for back-end:<br>
+    cd Dic_Dac_Doe/tic-tac-toe<br>
+    python3 -m venv .venv<br>
+    . .venv/bin/activate<br>
+    pip install -r requirements.txt<br>
+    ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004" python3 tic-tac-toe.py<br>
 
--> Another terminal for front-end:
-    - cd Dic_Dac_Doe/frontend-console
-    sudo yarn
+-> Another terminal for front-end:<br>
+    cd Dic_Dac_Doe/frontend-console<br>
+    sudo yarn<br>
     sudo yarn build
 
     - To make move as player 1:
@@ -33,9 +33,9 @@ How to run in Host-mode:
     - For your balance:
     yarn start inspect --payload 'balance,0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 
--> To stop the Application:
+-> To stop the Application:<br>
     docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml down -v
 
 
--> Extra address for multiple games: 
+-> Extra address for multiple games:<br>
     0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC -> use accountIndex '2'
