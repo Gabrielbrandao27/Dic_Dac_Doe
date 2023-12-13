@@ -30,9 +30,6 @@ How to run in Host-mode:
     - For your game-keys:
     yarn start inspect --payload 'game-key,0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 
-    - For your balance:
-    yarn start inspect --payload 'balance,0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
-
 -> To stop the Application:<br>
     docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml down -v
 

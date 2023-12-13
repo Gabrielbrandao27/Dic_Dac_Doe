@@ -210,7 +210,7 @@ def handle_inspect(data):
     else:
         report = {
             "payload": str2hex(
-                f'\n\nInput does not match any case. Try "status,<game-key>" for game status.\nTry "game-key,<your-address>" for your game-keys.\nOr "balance,<your-address>" for balance report.\n'
+                f'\n\nInput does not match any case. Try "status,<game-key>" for game status.\nTry "game-key,<your-address>" for your game-keys.\n'
             )
         }
 
